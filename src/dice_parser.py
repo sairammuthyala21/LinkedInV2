@@ -69,37 +69,57 @@ def _parse_card(card) -> dict | None:
         # Strip "View Details for " prefix
         title = aria.replace("View Details for ", "").strip()
 
-    # ── Company name — from the company link ─────────────────────────────
-    company_link = card.select_one('a[href*="/company-profile/"]')
+    # ── Company name — from the company profile link ───────────────────
+    # The company link contains a <p> with the name inside the <a>
+    company_link = card.select_one('a[href*="/company-profile/"] p')
     company_name = ""
     company_url = ""
     if company_link:
         company_name = company_link.get_text(strip=True)
-        raw_company_href = company_link.get("href", "")
-        company_url = f"https://www.dice.com{raw_company_href.split('?')[0].strip()}" if raw_company_href else ""
+        # Walk up to the parent <a> for the href
+        parent_a = company_link.find_parent('a', href=True)
+        if parent_a:
+            raw_company_href = parent_a.get("href", "")
+            company_url = f"https://www.dice.com{raw_company_href.split('?')[0].strip()}" if raw_company_href else ""
 
-    # ── Location — first instance of text-zinc-600 paragraph ──────────────
+    # ── Location & work type — from zinc-600 paragraphs ─────────────
+    # Dice has p.text-zinc-600 in TWO areas:
+    #   (A) the location/date row — work type, location, separator, date
+    #   (B) the badge section — employment type, salary
+    # We only want (A). Badges are inside divs with aria-labelledby or bg-zinc-100.
+    # Solution: select zinc-600 that is NOT inside a badge container.
+    badge_paras = card.select(
+        '[aria-labelledby="employmentType-label"] p, '
+        '[aria-labelledby="salary-label"] p, '
+        '[class*="bg-zinc-100"] p.text-zinc-600'
+    )
+    badge_texts = {p.get_text(strip=True) for p in badge_paras}
+
     zinc_paras = card.select("p.text-zinc-600")
     location = ""
     posted_time = ""
-    for p in zinc_paras:
-        text = p.get_text(strip=True)
-        if text in ("Remote", "On-Site", "Hybrid", "Remote / Hybrid"):
-            # Work type is captured separately
-            pass
-        else:
-            location = text
+    work_type_text = ""
 
-    # ── Posted time — look for patterns like "2h ago", "Today", "3d ago", "Just now" ─
     time_pattern = re.compile(
         r"\b(\d+[dhm] ago|Today|Yesterday|Just now)\b", re.IGNORECASE
     )
+
+    WORK_TYPE_VALUES = {"Remote", "On-Site", "Hybrid", "Remote / Hybrid"}
+
     for p in zinc_paras:
         text = p.get_text(strip=True)
-        m = time_pattern.search(text)
-        if m:
-            posted_time = m.group(1)
-            break
+        # Skip badge paragraphs
+        if text in badge_texts:
+            continue
+        if text in WORK_TYPE_VALUES:
+            if not work_type_text:
+                work_type_text = text
+        elif time_pattern.search(text):
+            posted_time = time_pattern.search(text).group(1)
+        elif text and text not in ("•", ""):
+            # This should be the location — but skip known non-location texts
+            if not location:
+                location = text
 
     # ── Employment type badge ──────────────────────────────────────────────
     emp_badge = card.select_one('[aria-labelledby="employmentType-label"] p')
@@ -114,14 +134,6 @@ def _parse_card(card) -> dict | None:
     desc_div = card.select_one("p.line-clamp-2")
     if desc_div:
         desc_snippet = desc_div.get_text(strip=True)
-
-    # ── Work type detection ─────────────────────────────────────────────
-    work_type_text = ""
-    for p in zinc_paras:
-        text = p.get_text(strip=True)
-        if text in ("Remote", "On-Site", "Hybrid"):
-            work_type_text = text
-            break
 
     return {
         "jobId": job_guid,
@@ -283,23 +295,36 @@ def _normalize_output(result: dict) -> None:
     This ensures datasets from both sources are mergeable.
     """
 
-    # Normalize contractType to LinkedIn-style labels
+    # Normalize contractType to LinkedIn-style labels.
+    # Dice JSON-LD can return comma-separated values like
+    # "CONTRACTOR, FULL_TIME, PART_TIME" — we take the first one.
     raw_type = result.get("contractType", "")
-    normalized = raw_type
-    # Schema.org employment types → human labels
-    ld_normalize = {
-        "FULL_TIME": "Full-time",
-        "PART_TIME": "Part-time",
-        "CONTRACTOR": "Contract",
-        "CONTRACTS": "Contract",
-        "TEMPORARY": "Temporary",
-        "INTERNSHIP": "Internship",
-        "VOLUNTEER": "Volunteer",
-        "FULLTIME": "Full-time",
-        "PARTTIME": "Part-time",
-        "PER_DIEM": "Contract",
-    }
-    normalized = ld_normalize.get(raw_type.upper(), raw_type) if raw_type else ""
+    normalized = ""
+    if raw_type:
+        # Split on comma, normalize first meaningful value
+        parts = [p.strip() for p in raw_type.split(",") if p.strip()]
+        ld_normalize = {
+            "FULL_TIME": "Full-time",
+            "PART_TIME": "Part-time",
+            "CONTRACTOR": "Contract",
+            "CONTRACTS": "Contract",
+            "TEMPORARY": "Temporary",
+            "INTERNSHIP": "Internship",
+            "VOLUNTEER": "Volunteer",
+            "FULLTIME": "Full-time",
+            "PARTTIME": "Part-time",
+            "PER_DIEM": "Contract",
+            "THIRD PARTY": "Contract",
+        }
+        for part in parts:
+            label = ld_normalize.get(part.upper(), "")
+            if label:
+                normalized = label
+                break
+        # Fallback: use first part as-is if no mapping found
+        if not normalized and parts:
+            normalized = parts[0]
+
     result["contractType"] = normalized
 
     # Job URL — reconstruct from jobId if not already set
