@@ -1,0 +1,9 @@
+{
+  "actorSpecification": 1,
+  "name": "linkedin-job-scraper-v2",
+  "title": "LinkedIn Job Scraper v2 — Keyword-Based Search",
+  "description": "Scrapes LinkedIn public job listings using keyword-based search. All filters (job type, work type, experience level) are embedded in the keywords query string since LinkedIn no longer respects filter URL parameters. Post-filters results on our side for accuracy.",
+  "version": "1.0",
+  "input": "./input_schema.json",
+  "dockerfile": "../Dockerfile"
+}

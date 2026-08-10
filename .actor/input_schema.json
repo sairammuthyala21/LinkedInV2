@@ -1,0 +1,75 @@
+{
+  "title": "LinkedIn Job Scraper v2 — Keyword-Based Search",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "jobTitle": {
+      "title": "Job Title",
+      "type": "string",
+      "description": "The job title to search for (e.g. 'Software Engineer'). Embedded directly in the keywords query.",
+      "editor": "textfield",
+      "example": "Backend Developer .NET"
+    },
+    "skills": {
+      "title": "Skills",
+      "type": "array",
+      "description": "List of skills to include in the search (e.g. [\".NET\", \"Python\"]). Appended to the keywords query.",
+      "editor": "stringList",
+      "items": { "type": "string" },
+      "example": [".NET", "C#"]
+    },
+    "location": {
+      "title": "Location",
+      "type": "string",
+      "description": "Location name (e.g. 'Seattle, Washington' or 'United States'). Auto-resolved to LinkedIn geoId.",
+      "editor": "textfield",
+      "example": "United States"
+    },
+    "datePosted": {
+      "title": "Date Posted",
+      "type": "string",
+      "description": "Filter jobs by how recently they were posted.",
+      "editor": "select",
+      "enum": ["anyTime", "pastDay", "pastWeek", "pastMonth"],
+      "enumTitles": ["Any Time", "Past 24 Hours", "Past Week", "Past Month"],
+      "default": "anyTime"
+    },
+    "jobType": {
+      "title": "Job Type",
+      "type": "string",
+      "description": "Filter by employment type. Embedded in keywords AND post-filtered on our side for accuracy.",
+      "editor": "select",
+      "enum": ["", "F", "P", "C", "T", "I", "V", "O"],
+      "enumTitles": ["Any", "Full-time", "Part-time", "Contract", "Temporary", "Internship", "Volunteer", "Other"],
+      "default": ""
+    },
+    "workType": {
+      "title": "Work Type",
+      "type": "string",
+      "description": "Filter by work location type. Embedded in keywords.",
+      "editor": "select",
+      "enum": ["", "1", "2", "3"],
+      "enumTitles": ["Any", "On-site", "Remote", "Hybrid"],
+      "default": ""
+    },
+    "experienceLevel": {
+      "title": "Experience Level",
+      "type": "string",
+      "description": "Filter by seniority level. Embedded in keywords.",
+      "editor": "select",
+      "enum": ["", "1", "2", "3", "4", "5", "6"],
+      "enumTitles": ["Any", "Internship", "Entry level", "Associate", "Mid-Senior", "Director", "Executive"],
+      "default": ""
+    },
+    "maxJobs": {
+      "title": "Max Jobs to Scrape",
+      "type": "integer",
+      "description": "Maximum number of matching job listings to scrape. Scraper keeps paginating until this count is met.",
+      "editor": "number",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 1000
+    }
+  },
+  "required": []
+}
