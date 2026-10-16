@@ -73,6 +73,7 @@ async def main() -> None:
         skills: list[str] = [s.strip() for s in actor_input.get("skills", []) if s.strip()]
         location: str = actor_input.get("location", "").strip()
         date_posted: str = actor_input.get("datePosted", "anyTime")
+        custom_hours = actor_input.get("customHours")
         job_type: str = actor_input.get("jobType", "")
         work_type: str = actor_input.get("workType", "").strip()
         experience_level: str = actor_input.get("experienceLevel", "").strip()
@@ -81,6 +82,16 @@ async def main() -> None:
         if not job_title and not skills and not location:
             await Actor.fail(
                 status_message="At least one of 'jobTitle', 'skills', or 'location' is required."
+            )
+            return
+
+        if date_posted == "custom" and (
+            isinstance(custom_hours, bool)
+            or not isinstance(custom_hours, int)
+            or custom_hours < 1
+        ):
+            await Actor.fail(
+                status_message="'customHours' must be a positive whole number when 'datePosted' is 'custom'."
             )
             return
 
@@ -120,7 +131,7 @@ async def main() -> None:
 
         log.info(
             f"Input → jobTitle='{job_title}' skills={skills} "
-            f"location='{location}' datePosted={date_posted} "
+            f"location='{location}' datePosted={date_posted} customHours={custom_hours} "
             f"jobType={job_type!r} workType={work_type} experienceLevel={experience_level} "
             f"maxJobs={max_jobs}"
         )
@@ -162,6 +173,7 @@ async def main() -> None:
                 keywords=keywords,
                 geo_id=geo_id,
                 date_posted=date_posted,
+                custom_hours=custom_hours,
                 start=start_index,
             )
             log.info(
@@ -244,6 +256,7 @@ def _build_search_url(
     geo_id: str | None,
     date_posted: str,
     start: int = 0,
+    custom_hours: int | None = None,
 ) -> str:
     """Construct the LinkedIn job search URL.
 
@@ -261,7 +274,11 @@ def _build_search_url(
         params["geoId"] = geo_id
 
     if date_posted:
-        tpr = DATE_POSTED_MAP.get(date_posted, "")
+        tpr = (
+            f"r{custom_hours * 3600}"
+            if date_posted == "custom" and custom_hours is not None
+            else DATE_POSTED_MAP.get(date_posted, "")
+        )
         if tpr:
             params["f_TPR"] = tpr
 

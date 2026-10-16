@@ -30,9 +30,17 @@
       "type": "string",
       "description": "Filter jobs by how recently they were posted.",
       "editor": "select",
-      "enum": ["anyTime", "pastDay", "pastWeek", "pastMonth"],
-      "enumTitles": ["Any Time", "Past 24 Hours", "Past Week", "Past Month"],
+      "enum": ["anyTime", "pastDay", "pastWeek", "pastMonth", "custom"],
+      "enumTitles": ["Any Time", "Past 24 Hours", "Past Week", "Past Month", "Custom"],
       "default": "anyTime"
+    },
+    "customHours": {
+      "title": "Custom Time (Hours)",
+      "type": "integer",
+      "description": "Used when Date Posted is Custom. Enter the number of hours to look back (1 = 1 hour, 2 = 2 hours).",
+      "editor": "number",
+      "minimum": 1,
+      "unit": "hours"
     },
     "jobType": {
       "title": "Job Type",

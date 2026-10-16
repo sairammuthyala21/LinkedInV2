@@ -27,7 +27,8 @@ LinkedIn no longer respects filter URL parameters (`f_JT`, `f_E`, `f_WT`) on the
 | `jobTitle` | string | Job title to search for | `Backend Developer .NET` |
 | `skills` | array | Skills to include | `[".NET", "C#"]` |
 | `location` | string | Location (auto-resolved to geoId) | `United States` |
-| `datePosted` | select | `anyTime` / `pastDay` / `pastWeek` / `pastMonth` | `pastDay` |
+| `datePosted` | select | `anyTime` / `pastDay` / `pastWeek` / `pastMonth` / `custom` | `custom` |
+| `customHours` | integer | Hours to look back when `datePosted=custom` (required for Custom) | `2` |
 | `jobType` | select | `F`=Full-time, `C`=Contract, etc. | `C` |
 | `workType` | select | `1`=On-site, `2`=Remote, `3`=Hybrid | `3` |
 | `experienceLevel` | select | `1`=Internship … `6`=Executive | `4` |
@@ -42,6 +43,8 @@ LinkedIn no longer respects filter URL parameters (`f_JT`, `f_E`, `f_WT`) on the
 | `workType=2` | `Remote` |
 | `workType=3` | `Hybrid` |
 | `experienceLevel=4` | `Mid-Senior Level` |
+
+For example, `{"jobTitle":"Software Engineer","datePosted":"custom","customHours":2}` sends `f_TPR=r7200` to LinkedIn. One hour sends `f_TPR=r3600`.
 
 ## Output Fields
 
