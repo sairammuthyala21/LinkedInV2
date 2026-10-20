@@ -5,5 +5,5 @@
   "description": "Scrapes Dice.com public job listings using native filter params (employmentType, workplaceTypes, postedDate). Dice is server-rendered — all data is in the initial HTML. Job detail pages include JSON-LD structured data for reliable extraction. Output schema matches the LinkedIn scraper for dataset compatibility.",
   "version": "1.0",
   "input": "./dice_input_schema.json",
-  "dockerfile": "../Dockerfile"
+  "dockerfile": "../Dockerfile.dice"
 }

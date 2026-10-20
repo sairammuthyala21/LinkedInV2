@@ -17,8 +17,62 @@ import logging
 import re
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
+from dice_constants import CONTRACT_TYPE_LABEL_MAP, EMPLOYMENT_TYPE_MAP
 
 log = logging.getLogger(__name__)
+
+CORP_TO_CORP_BADGE = re.compile(r"\bcorp[\s-]+to[\s-]+corp\b", re.IGNORECASE)
+C2C_MENTION = re.compile(
+    r"\b(?:C2C|corp(?:oration)?[\s-]+to[\s-]+corp(?:oration)?)\b",
+    re.IGNORECASE,
+)
+NEGATED_C2C_PREFIX = re.compile(
+    r"\b(?:no|not|without|excluding|except|not accepting|"
+    r"not considering|not available for|do not accept|don't accept|"
+    r"can't do|cannot do|can not do)\s+"
+    r"(?:(?:[\w-]+(?:\s+[\w-]+){0,2})\s+(?:or|and|/)\s+)?$",
+    re.IGNORECASE,
+)
+NEGATED_C2C_SUFFIX = re.compile(
+    r"^\s+(?:(?:is|are|will be)\s+)?not\s+"
+    r"(?:accepted|allowed|considered|eligible)\b",
+    re.IGNORECASE,
+)
+
+
+def _has_positive_c2c_mention(value: str) -> bool:
+    """Recognize C2C text while ignoring phrases such as 'No C2C'."""
+    clean = re.sub(r"[*_~]", "", value)
+    for mention in C2C_MENTION.finditer(clean):
+        preceding = clean[max(0, mention.start() - 50):mention.start()]
+        following = clean[mention.end():mention.end() + 35]
+        if NEGATED_C2C_PREFIX.search(preceding) or NEGATED_C2C_SUFFIX.search(following):
+            continue
+        return True
+    return False
+
+
+def expected_contract_label(job_type: str) -> str:
+    """Resolve an input code such as C through Dice's native filter value."""
+    return CONTRACT_TYPE_LABEL_MAP.get(EMPLOYMENT_TYPE_MAP.get(job_type, ""), "")
+
+
+def matches_selected_job_type(expected_label: str, job: dict) -> bool:
+    """For Contract, accept a Corp To Corp badge or positive C2C text."""
+    if not expected_label:
+        return True
+
+    if expected_label == "Contract":
+        badge_match = any(
+            CORP_TO_CORP_BADGE.search(label)
+            for label in job.get("_diceDetailBadges", [])
+        )
+        return badge_match or any(
+            _has_positive_c2c_mention(job.get(field, ""))
+            for field in ("title", "description")
+        )
+
+    return job.get("contractType", "").strip() == expected_label
 
 
 # ── Search Results Parsing ────────────────────────────────────────────────────
@@ -164,6 +218,10 @@ def parse_job_detail(html: str, base_data: dict) -> dict:
     """
     soup = BeautifulSoup(html, "lxml")
     result = dict(base_data)
+    result["_diceDetailBadges"] = [
+        badge.get_text(" ", strip=True)
+        for badge in soup.select('[data-testid="job-detail-header-card"] .SeuiInfoBadge')
+    ]
 
     # ── 1. Try JSON-LD structured data (preferred, highly reliable) ─────────
     ld_json_tag = soup.select_one('script[type="application/ld+json"]')

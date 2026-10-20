@@ -38,9 +38,13 @@ from dice_constants import (
     PAGE_SIZE,
     DEFAULT_HEADERS,
     REQUEST_DELAY,
-    CONTRACT_TYPE_LABEL_MAP,
 )
-from dice_parser import parse_search_results, parse_job_detail
+from dice_parser import (
+    expected_contract_label,
+    matches_selected_job_type,
+    parse_job_detail,
+    parse_search_results,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -77,9 +81,7 @@ async def main() -> None:
         keywords: str = " ".join(keyword_parts)
 
         # Determine the expected contractType label for post-filtering
-        expected_contract_label = CONTRACT_TYPE_LABEL_MAP.get(
-            job_type, ""
-        ) if job_type else ""
+        contract_label = expected_contract_label(job_type)
 
         log.info(
             f"Dice Input → jobTitle='{job_title}' skills={skills} "
@@ -88,8 +90,8 @@ async def main() -> None:
             f"maxJobs={max_jobs}"
         )
         log.info(f"Dice Keywords → {keywords!r}")
-        if expected_contract_label:
-            log.info(f"Dice expected contractType → {expected_contract_label!r}")
+        if contract_label:
+            log.info(f"Dice expected contractType → {contract_label!r}")
 
         # ── 2. Proxy configuration ───────────────────────────────────────────
         try:
@@ -156,19 +158,21 @@ async def main() -> None:
                     continue
 
                 # ── Post-filter by contractType ──────────────────────────────
-                if expected_contract_label:
-                    actual_label = full_job.get("contractType", "")
-                    if actual_label and actual_label != expected_contract_label:
-                        log.info(
-                            f"  DICE SKIP (expected={expected_contract_label!r}, "
-                            f"actual={actual_label!r}): "
-                            f"{full_job.get('title')} @ {full_job.get('companyName')}"
-                        )
-                        total_skipped += 1
-                        continue
+                if not matches_selected_job_type(contract_label, full_job):
+                    log.info(
+                        f"  DICE SKIP (expected={contract_label!r}, "
+                        f"badges={full_job.get('_diceDetailBadges')!r}): "
+                        f"{full_job.get('title')} @ {full_job.get('companyName')}"
+                    )
+                    total_skipped += 1
+                    continue
 
-                # Remove internal jobId field
+                if contract_label == "Contract":
+                    full_job["contractType"] = "Contract"
+
+                # Remove internal fields
                 full_job.pop("jobId", None)
+                full_job.pop("_diceDetailBadges", None)
 
                 await Actor.push_data(full_job)
                 jobs_scraped += 1

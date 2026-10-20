@@ -37,7 +37,7 @@
     "jobType": {
       "title": "Job Type (Employment Type)",
       "type": "string",
-      "description": "Filter by employment type. Uses Dice native filters.employmentType param — very reliable, no post-filtering needed for most cases.",
+      "description": "Filter by employment type. Contract saves jobs with a Corp To Corp badge or an affirmative C2C mention in the title or description. Other badges may also be present.",
       "editor": "select",
       "enum": ["", "F", "P", "C", "T", "I", "V"],
       "enumTitles": ["Any", "Full-time", "Part-time", "Contract", "Temporary", "Internship", "Volunteer"],
