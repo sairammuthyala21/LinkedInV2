@@ -26,6 +26,7 @@ import httpx
 from apify import Actor
 
 from constants import DATE_POSTED_MAP, JOB_TYPE_MAP, PAGE_SIZE, REQUEST_DELAY, DEFAULT_HEADERS
+from contract_filter import classify_contract_job
 from geo_resolver import resolve_geo_id
 from parser import parse_job_detail, parse_search_results
 
@@ -223,6 +224,21 @@ async def main() -> None:
                         )
                         total_skipped += 1
                         continue
+
+                if job_type == "C":
+                    assessment = classify_contract_job(full_job)
+                    if assessment.status == "skip":
+                        log.info(
+                            f"  SKIP contract arrangement ({assessment.reason}): "
+                            f"{full_job.get('title')} @ {full_job.get('companyName')}"
+                        )
+                        total_skipped += 1
+                        continue
+                    log.info(
+                        f"  CONTRACT {assessment.status.upper()} "
+                        f"({assessment.reason}): "
+                        f"{full_job.get('title')} @ {full_job.get('companyName')}"
+                    )
 
                 # Remove internal jobId field
                 full_job.pop("jobId", None)

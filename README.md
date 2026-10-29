@@ -16,7 +16,7 @@ LinkedIn no longer respects filter URL parameters (`f_JT`, `f_E`, `f_WT`) on the
 
 2. **Searches LinkedIn** using only `keywords` + `geoId` + `f_TPR` (date posted)
 
-3. **Post-filters** each job's detail page — only saves jobs whose `contractType` matches the requested `jobType`
+3. **Post-filters** each job's detail page by employment type. For `jobType=C`, it also checks the title and description for W-2, C2C, 1099, independent contractor, and agency restrictions. It saves both clear matches (`keep`) and uncertain listings (`review`), and skips clear W-2-only or agency-blocked jobs.
 
 4. **Keeps paginating** until `maxJobs` matching results are collected
 
@@ -64,6 +64,22 @@ For example, `{"jobTitle":"Software Engineer","datePosted":"custom","customHours
 | `salary` | Salary range (if available) |
 | `applicationsCount` | Number of applicants |
 | `jobUrl` | Direct link to the job posting |
+
+## Test the Contract Filter
+
+Run the local phrase and parser tests:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+For a live 10-output check, run the LinkedIn actor with:
+
+```json
+{"jobTitle":"Software Engineer","location":"United States","datePosted":"pastWeek","jobType":"C","maxJobs":10}
+```
+
+The dataset should contain 10 saved jobs when enough listings are accessible. The run log shows `CONTRACT KEEP`, `CONTRACT REVIEW`, and `SKIP` with reasons. Review the saved jobs' titles and descriptions against those log decisions. LinkedIn may rate-limit direct local requests, so the actor's normal request delays and configured proxy are preferable for this live check.
 
 ## Deploy to Apify
 
